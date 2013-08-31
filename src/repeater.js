@@ -361,3 +361,19 @@ this.repeater = (function(global, repeater, oldRepeater) {
 
     return repeater;
 })(this, {}, this.repeater);
+
+// ## jQuery extension
+
+$.fn.toRepeater = function() {
+    var $elements = this;
+    var args = _.toArray(arguments);
+    var repeater = Repeater.create();
+    args.push(function() {
+        repeater.emitMany(arguments);
+    });
+    $elements.on.apply($elements, args);
+    repeater.onCancel.add(function() {
+        $elements.off.apply($elements, args);
+    });
+    return repeater;
+};
