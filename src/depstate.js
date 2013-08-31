@@ -1,3 +1,12 @@
+// Create a new instance of a class.
+function create() {
+    var Cons = this;
+    return new Cons();
+}
+
+// Inherit from a class, prototypically.
+//
+//     To, From := Function
 function inherit(To, From) {
     function Heir() {}
     Heir.prototype = From.prototype;
@@ -12,6 +21,7 @@ function inherit(To, From) {
 // threads of execution.
 //     Key := String
 //     Count := Number, int >= 0
+/**/
 
 // Create a new vector clock.
 //
@@ -188,7 +198,7 @@ function AbortPromise() {}
 
 AbortPromise.prototype.current = $.Deferred().resolve().promise();
 
-AbortPromise.prototype.apply = function(values) {
+AbortPromise.prototype.apply = function(context, values) {
     var previous = this.current;
     var promise = this.current = values[0];
     if (_.isFunction(previous.abort)) {
@@ -205,9 +215,7 @@ Repeater.prototype.abortPromise = function() {
 
 // ### class methods
 
-Repeater.create = function() {
-    return new Repeater();
-};
+Repeater.create = create;
 
 // join
 
@@ -253,8 +261,7 @@ function JoinRepeater(sources) {
     SubRepeater.call(this);
     this.values = [];
     this.clocks = new VectorClockArray();
-    // map id to index
-    this.indexOf = {};
+    this.indexOf = {}; // id => index
     _.each(sources, function(source, index) {
         this.indexOf[source.id] = index;
         this.addSource(source);
@@ -281,12 +288,25 @@ Repeater.join = function(/*repeater, ...*/) {
     return new JoinRepeater(arguments);
 };
 
-// ## RepeaterProxy
 
+// ## `RepeaterProxy`
+//
+// Sometimes it is helpful to have named indirection between `Repeater`s. Using
+// a proxy, the order of creation of repeaters doesn't matter because named
+// placeholders are used.
+
+
+// Create a new `RepeaterProxy`.
+//
+//     return := this
 function RepeaterProxy() {
     this.repeaters = {};
 }
 
+// Get a named repeater. Create one, if necessary.
+//
+//     name := String
+//     return := Repeater
 RepeaterProxy.prototype.get = function(name) {
     if (this.repeaters.hasOwnProperty(name)) {
         return this.repeaters[name];
@@ -317,9 +337,7 @@ RepeaterProxy.prototype.setMany = function(repeaters) {
 
 // ### class methods
 
-RepeaterProxy.create = function() {
-    return new RepeaterProxy();
-};
+RepeaterProxy.create = create;
 
 // export
 this.depstate               = {};

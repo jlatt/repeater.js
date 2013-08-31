@@ -21,6 +21,6 @@
  "nonew": true,
  "quotmark": "single",
  "regexp": false,
- "strict": true,
+ "strict": false,
  "trailing": true,
  "undef": true}

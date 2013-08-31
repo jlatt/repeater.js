@@ -1,23 +1,24 @@
+source = src/depstate.js
 target = build/depstate.js
 
 all: $(target)
 
 build:
-	mkdir -p build
+	mkdir -pv build
 
-build/depstate.js: src/depstate.js build
+build/depstate.js: $(source) build
 	./package.sh < $< > $@
 
 clean:
-	rm -rf build docs
+	rm -rfv build doc
 
-docs: $(target)
-	mkdir -p docs
+doc/depstate.html: $(target)
+	docco --output doc $<
 
-docs/depstate.html: $(target)
-	docco $<
+lint: $(source)
+	jshint $<
 
 test: $(target)
 	phantomjs test/qunit_runner.js test/index.html
 
-.PHONY: all clean test
+.PHONY: all clean lint test

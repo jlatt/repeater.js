@@ -1,6 +1,6 @@
 function testConstructor(Constructor) {
     test('constructor', function() {
-        ok(new Constructor());
+        ok(new depstate[Constructor]());
     });
 }
 
@@ -9,16 +9,16 @@ function testClass(Constructor) {
     var args = _(arguments).slice(1);
     var body = args.pop();
     args.push(function() {
-        return body.call(this, new Constructor());
+        return body.call(this, new depstate[Constructor]());
     });
     return test.apply(this, args);
 }
 
 module('VectorClock');
 
-testConstructor(VectorClock);
+testConstructor('VectorClock');
 
-testClass(VectorClock, 'get', function(vc) {
+testClass('VectorClock', 'get', function(vc) {
     _.times(10, function(i) {
         strictEqual(vc.get(i), 0);
     }, this);
@@ -32,7 +32,7 @@ testClass(VectorClock, 'get', function(vc) {
     }, this);
 });
 
-testClass(VectorClock, 'has', function(vc) {
+testClass('VectorClock', 'has', function(vc) {
     _.times(10, function(i) {
         strictEqual(vc.has(i), false);
     }, this);
@@ -46,7 +46,7 @@ testClass(VectorClock, 'has', function(vc) {
     }, this);
 });
 
-testClass(VectorClock, 'next', function(vc1) {
+testClass('VectorClock', 'next', function(vc1) {
     var key = 502;
     strictEqual(vc1.get(key), 0);
     var vc2 = vc1.next(key);
@@ -63,13 +63,13 @@ testClass(VectorClock, 'next', function(vc1) {
     strictEqual(vc1.get(key), 0);
 });
 
-testClass(VectorClock, 'merge', function(vc1) {
+testClass('VectorClock', 'merge', function(vc1) {
     var loop = 5;
     _.times(loop, function(i) {
         vc1.keys[i] = i + 1;
     }, this);
 
-    var vc2 = new VectorClock();
+    var vc2 = new depstate.VectorClock();
     _.times(loop, function(i) {
         vc2.keys[i] = (2 * i) + 1;
     }, this);
@@ -82,9 +82,9 @@ testClass(VectorClock, 'merge', function(vc1) {
 
 module('Repeater');
 
-testConstructor(Repeater);
+testConstructor('Repeater');
 
-testClass(Repeater, 'emit', 6, function(r) {
+testClass('Repeater', 'emit', 6, function(r) {
     r.onEmit.add(function(id, values, clock) {
         strictEqual(values.length, 1);
         strictEqual(values[0], true);
@@ -94,7 +94,7 @@ testClass(Repeater, 'emit', 6, function(r) {
     r.emit(true);
 });
 
-testClass(Repeater, 'map', 2, function(r1) {
+testClass('Repeater', 'map', 2, function(r1) {
     var r2 = r1.map(function(a, b, c) {
         return a + b - c;
     });
@@ -110,4 +110,4 @@ testClass(Repeater, 'map', 2, function(r1) {
 
 module('RepeaterProxy');
 
-testConstructor(RepeaterProxy);
+testConstructor('RepeaterProxy');
