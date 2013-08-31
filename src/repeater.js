@@ -155,6 +155,19 @@ Repeater.prototype.map = function(map) {
     return new MapRepeater(this, map);
 };
 
+// filter
+
+Repeater.prototype.filter = function(filter) {
+    // TODO class-ify
+    var repeater = Repeater.create();
+    repeater.onReceive = function(id, values, clock) {
+        if (filter.apply(this, values)) {
+            Repeater.prototype.onReceive.apply(this, arguments);
+        }
+    };
+    return repeater;
+};
+
 function ChainPromise() {}
 
 ChainPromise.prototype.current = $.Deferred().resolve().promise();
