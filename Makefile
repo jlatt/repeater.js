@@ -1,18 +1,18 @@
-source = src/depstate.js
-target = build/depstate.js
+source = src/repeater.js
+target = build/repeater.js
 
 all: $(target)
 
 build:
 	mkdir -pv build
 
-build/depstate.js: $(source) build
+build/repeater.js: $(source) build
 	./package.sh < $< > $@
 
 clean:
 	rm -rfv build doc
 
-doc/depstate.html: $(target)
+doc/repeater.html: $(target)
 	docco --output doc $<
 
 lint: $(source)

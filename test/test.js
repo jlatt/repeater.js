@@ -1,6 +1,6 @@
 function testConstructor(Constructor) {
     test('constructor', function() {
-        ok(new depstate[Constructor]());
+        ok(new repeater[Constructor]());
     });
 }
 
@@ -9,7 +9,7 @@ function testClass(Constructor) {
     var args = _(arguments).slice(1);
     var body = args.pop();
     args.push(function() {
-        return body.call(this, new depstate[Constructor]());
+        return body.call(this, new repeater[Constructor]());
     });
     return test.apply(this, args);
 }
@@ -69,7 +69,7 @@ testClass('VectorClock', 'merge', function(vc1) {
         vc1.keys[i] = i + 1;
     }, this);
 
-    var vc2 = new depstate.VectorClock();
+    var vc2 = new repeater.VectorClock();
     _.times(loop, function(i) {
         vc2.keys[i] = (2 * i) + 1;
     }, this);

@@ -339,8 +339,14 @@ RepeaterProxy.prototype.setMany = function(repeaters) {
 
 RepeaterProxy.create = create;
 
-// export
-this.depstate               = {};
-this.depstate.VectorClock   = VectorClock;
-this.depstate.Repeater      = Repeater;
-this.depstate.RepeaterProxy = RepeaterProxy;
+// Export.
+(function(global, repeater, oldRepeater) {
+    global.repeater               = repeater;
+    global.repeater.VectorClock   = VectorClock;
+    global.repeater.Repeater      = Repeater;
+    global.repeater.RepeaterProxy = RepeaterProxy;
+    global.repeater.noConflict    = function() {
+        global.repeater = oldRepeater;
+        return repeater;
+    };
+})(this, {}, this.repeater);
