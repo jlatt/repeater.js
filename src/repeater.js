@@ -217,6 +217,16 @@ Repeater.prototype.abortPromise = function() {
 
 Repeater.create = create;
 
+Repeater.sample = function(sample, wait) {
+    // TODO class-ify
+    var repeater = this.create();
+    var handle = window.setInterval(sample, wait);
+    repeater.onCancel.add(function() {
+        window.clearInterval(handle);
+    });
+    return repeater;
+};
+
 // join
 
 function VectorClockArray() {
