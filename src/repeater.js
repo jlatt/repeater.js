@@ -129,7 +129,7 @@ Repeater.prototype.emitMany = function(values) {
     return this;
 };
 
-Repeater.prototype.onReceive = function(values, clock) {
+Repeater.prototype.onReceive = function(values, clock/*, source*/) {
     this.clock = this.clock.merge(clock);
     this.emitMany(values);
 };
@@ -172,11 +172,10 @@ Repeater.beget(UniqueRepeater);
 UniqueRepeater.prototype.values = null;
 
 UniqueRepeater.prototype.onReceive = function(values, clock) {
-    this.clock = this.clock.merge(clock);
     if (!_.isEqual(this.values, values)) {
         this.values = values;
     }
-    this.emitMany(this.values);
+    Repeater.prototype.onReceive.call(this, this.values, clock);
 };
 
 Repeater.prototype.unique = function() {
@@ -193,10 +192,9 @@ function FilterRepeater(source, filter) {
 Repeater.beget(FilterRepeater);
 
 FilterRepeater.prototype.onReceive = function(values) {
-    if (!this.filter.apply(this, values)) {
-        return;
+    if (this.filter.apply(this, values)) {
+        Repeater.prototype.onReceive.apply(this, arguments);
     }
-    Repeater.prototype.onReceive.apply(this, arguments);
 };
 
 Repeater.prototype.filter = function(filter) {

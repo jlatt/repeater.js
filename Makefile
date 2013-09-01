@@ -15,10 +15,12 @@ clean:
 doc/repeater.html: $(target)
 	docco --output doc $<
 
+docs: doc/repeater.html
+
 lint: $(source)
 	jshint $<
 
 test: $(target)
 	phantomjs test/qunit_runner.js test/index.html
 
-.PHONY: all clean lint test
+.PHONY: all clean docs lint test
