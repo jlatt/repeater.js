@@ -108,6 +108,26 @@ testClass('Repeater', 'map', 2, function(r1) {
     r1.emit(10, 3, 8);
 });
 
+testClass('Repeater', 'unique', 4, function(r1) {
+    var r2 = r1.unique();
+    var expected = [1, 2, 3, 2];
+    r2.onEmit.add(function(values) {
+        strictEqual(expected.shift(), values[0]);
+    });
+    _.each([1, 1, 2, 3, 3, 2], r1.emit, r1);
+});
+
+testClass('Repeater', 'filter', function(r1) {
+    var r2 = r1.filter(function(v) {
+        return v > 5;
+    });
+    var expected = _.range(6, 11);
+    r2.onEmit.add(function(values) {
+        strictEqual(expected.shift(), values[0]);
+    });
+    _.chain(1).range(11).each(r1.emit, r1);
+});
+
 module('RepeaterProxy');
 
 testConstructor('RepeaterProxy');
