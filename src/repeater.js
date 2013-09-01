@@ -155,6 +155,29 @@ Repeater.prototype.map = function(map) {
     return new MapRepeater(this, map);
 };
 
+// unique
+
+function UniqueRepeater(source) {
+    SubRepeater.call(this);
+    this.addSource(source);
+}
+
+inherit(UniqueRepeater, SubRepeater);
+
+UniqueRepeater.prototype.values = null;
+
+UniqueRepeater.prototype.onReceive = function(id, values, clock) {
+    this.clock = this.clock.merge(clock);
+    if (!_.isEqual(this.values, values)) {
+        this.values = values;
+    }
+    this.emitMany(this.values);
+};
+
+Repeater.prototype.unique = function() {
+    return new UniqueRepeater(this);
+};
+
 // filter
 
 Repeater.prototype.filter = function(filter) {
