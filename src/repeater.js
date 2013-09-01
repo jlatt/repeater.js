@@ -77,10 +77,20 @@ VectorClock.prototype.merge = function(clock) {
     return outgoing;
 };
 
-function Repeater() {
+VectorClock.fromJSON = function(obj) {
+    var vc = new VectorClock();
+    _.extend(vc.keys, obj);
+    return vc;
+};
+
+function Repeater(source/*?*/) {
     this.id = this.idSequence.next();
     this.onEmit = $.Callbacks('memory');
     this.onCancel = $.Callbacks('memory once');
+    _.bindAll(this, 'onReceive');
+    if (_.isObject(source)) {
+        this.addSource(source);
+    }
 }
 
 Repeater.beget = beget;
@@ -101,7 +111,9 @@ Repeater.prototype.cancel = function() {
     this.onEmit
         .disable()
         .empty();
-    this.onCancel.fire(this, [this]);
+    this.onCancel
+        .fire(this, [this])
+        .empty();
     return this;
 };
 
@@ -117,24 +129,12 @@ Repeater.prototype.emitMany = function(values) {
     return this;
 };
 
-// ### methods
-
-function SubRepeater(source/*?*/) {
-    Repeater.call(this);
-    _.bindAll(this, 'onReceive');
-    if (_.isObject(source)) {
-        this.addSource(source);
-    }
-}
-
-Repeater.beget(SubRepeater);
-
-SubRepeater.prototype.onReceive = function(values, clock) {
+Repeater.prototype.onReceive = function(values, clock) {
     this.clock = this.clock.merge(clock);
-    this.onEmit.fireWith(this, [values, this.clock, this]);
+    this.emitMany(values);
 };
 
-SubRepeater.prototype.addSource = function(source) {
+Repeater.prototype.addSource = function(source) {
     this.onCancel.add(function() {
         source.onEmit.remove(this.onReceive);
     });
@@ -145,16 +145,15 @@ SubRepeater.prototype.addSource = function(source) {
 // map
 
 function MapRepeater(source, map) {
-    SubRepeater.call(this, source);
+    Repeater.call(this, source);
     this.map = map;
 }
 
-SubRepeater.beget(MapRepeater);
+Repeater.beget(MapRepeater);
 
 MapRepeater.prototype.onReceive = function(values, clock) {
-    this.clock = this.clock.merge(clock);
     var value = this.map.apply(this, values);
-    this.emit(value);
+    Repeater.prototype.onReceive.call(this, [value], clock);
 };
 
 //     map := function(Value, ...) { } Value
@@ -165,10 +164,10 @@ Repeater.prototype.map = function(map) {
 // unique
 
 function UniqueRepeater(source) {
-    SubRepeater.call(this, source);
+    Repeater.call(this, source);
 }
 
-SubRepeater.beget(UniqueRepeater);
+Repeater.beget(UniqueRepeater);
 
 UniqueRepeater.prototype.values = null;
 
@@ -187,17 +186,17 @@ Repeater.prototype.unique = function() {
 // filter
 
 function FilterRepeater(source, filter) {
-    SubRepeater.call(this, source);
+    Repeater.call(this, source);
     this.filter = filter;
 }
 
-SubRepeater.beget(FilterRepeater);
+Repeater.beget(FilterRepeater);
 
 FilterRepeater.prototype.onReceive = function(values) {
     if (!this.filter.apply(this, values)) {
         return;
     }
-    SubRepeater.prototype.onReceive.apply(this, arguments);
+    Repeater.prototype.onReceive.apply(this, arguments);
 };
 
 Repeater.prototype.filter = function(filter) {
@@ -222,10 +221,10 @@ Repeater.prototype.chainPromise = function() {
 };
 
 function UnPromise(source) {
-    SubRepeater.call(this, source);
+    Repeater.call(this, source);
 }
 
-SubRepeater.beget(UnPromise);
+Repeater.beget(UnPromise);
 
 UnPromise.prototype.onReceive = function(values, clock, source) {
     var promise = this.current = values[0];
@@ -238,7 +237,7 @@ UnPromise.prototype.onResolve = function(promise, receiveArgs) {
     if (this.current !== promise) {
         return;
     }
-    SubRepeater.prototype.onReceive.apply(this, receiveArgs);
+    Repeater.prototype.onReceive.apply(this, receiveArgs);
 };
 
 Repeater.prototype.unpromise = function() {
@@ -319,7 +318,7 @@ VectorClockArray.prototype.isSparse = function() {
 };
 
 function JoinRepeater(sources) {
-    SubRepeater.call(this);
+    Repeater.call(this);
     this.values = [];
     this.clocks = new VectorClockArray();
     this.indexOf = {}; // id => index
@@ -329,7 +328,7 @@ function JoinRepeater(sources) {
     }, this);
 }
 
-SubRepeater.beget(JoinRepeater);
+Repeater.beget(JoinRepeater);
 
 JoinRepeater.prototype.onReceive = function(values, clock, source) {
     var index = this.indexOf[source.id];
@@ -365,10 +364,10 @@ function RepeaterProxy() {
 }
 
 function ReplayRepeater() {
-    SubRepeater.call(this);
+    Repeater.call(this);
 }
 
-SubRepeater.beget(ReplayRepeater);
+Repeater.beget(ReplayRepeater);
 
 ReplayRepeater.prototype.onReceive = function(values, clock, source) {
     this.onEmit.fireWith(source, arguments);
