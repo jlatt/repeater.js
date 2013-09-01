@@ -48,19 +48,28 @@ testClass('VectorClock', 'has', function(vc) {
 
 testClass('VectorClock', 'next', function(vc1) {
     var key = 502;
-    strictEqual(vc1.get(key), 0);
+    function check1() {
+        strictEqual(vc1.get(key), 0, 'vc1 key is 0');
+    }
+    check1();
     var vc2 = vc1.next(key);
-    strictEqual(vc2.get(key), 1);
-    strictEqual(vc1.get(key), 0);
+    function check2() {
+        strictEqual(vc2.get(key), 1, 'vc2 key is 1');
+    }
+    check2();
+    check1();
     var vc3 = vc2.next(key);
-    strictEqual(vc3.get(key), 2);
-    strictEqual(vc2.get(key), 1);
-    strictEqual(vc1.get(key), 0);
+    function check3() {
+        strictEqual(vc3.get(key), 2, 'vc3 key is 2');
+    }
+    check3();
+    check2();
+    check1();
     var vc4 = vc1.next(key);
-    strictEqual(vc4.get(key), 1);
-    strictEqual(vc3.get(key), 2);
-    strictEqual(vc2.get(key), 1);
-    strictEqual(vc1.get(key), 0);
+    strictEqual(vc4.get(key), 1, 'vc4 key is 1');
+    check3();
+    check2();
+    check1();
 });
 
 testClass('VectorClock', 'merge', function(vc1) {
@@ -76,7 +85,7 @@ testClass('VectorClock', 'merge', function(vc1) {
 
     var vc3 = vc1.merge(vc2);
     _.times(loop, function(i) {
-        strictEqual(vc2.get(i), vc3.get(i));
+        strictEqual(vc3.get(i), vc2.get(i), 'vc2 and vc3 have same ' + i);
     }, this);
 });
 
@@ -94,38 +103,41 @@ testClass('Repeater', 'emit', 6, function(r) {
     r.emit(true);
 });
 
-testClass('Repeater', 'map', 2, function(r1) {
+function TestMapper(expected) {
+    this.expected = expected;
+}
+
+TestMapper.prototype.apply = function(context, values) {
+    var exp = this.expected.shift();
+    strictEqual(values[0], exp, 'emits ' + exp);
+};
+
+testClass('Repeater', 'map', 3, function(r1) {
     var r2 = r1.map(function(a, b, c) {
         return a + b - c;
     });
-
-    notEqual(r1.id, r2.id);
-
-    r2.onEmit.add(function(values) {
-        strictEqual(values[0], 5);
-    });
-
+    notEqual(r2.id, r1.id, 'r1 and r2 have different ids');
+    r2.map(new TestMapper([5, 5]));
     r1.emit(10, 3, 8);
-});
-
-testClass('Repeater', 'unique', 4, function(r1) {
-    var r2 = r1.unique();
-    var expected = [1, 2, 3, 2];
-    r2.onEmit.add(function(values) {
-        strictEqual(expected.shift(), values[0]);
-    });
-    _.each([1, 1, 2, 3, 3, 2], r1.emit, r1);
+    r1.emit(6, 0, 1);
 });
 
 testClass('Repeater', 'filter', function(r1) {
     var r2 = r1.filter(function(v) {
         return v > 5;
     });
-    var expected = _.range(6, 11);
-    r2.onEmit.add(function(values) {
-        strictEqual(expected.shift(), values[0]);
-    });
-    _.chain(1).range(11).each(r1.emit, r1);
+    r2.map(new TestMapper(_.range(6, 11)));
+    _.chain(1).range(11).each(function(v) {
+        r1.emit(v);
+    }, this);
+});
+
+testClass('Repeater', 'unique', 4, function(r1) {
+    var r2 = r1.unique();
+    r2.map(new TestMapper([1, 2, 3, 2]));
+    _.each([1, 1, 2, 3, 3, 2], function(v) {
+        r1.emit(v);
+    }, this);
 });
 
 module('RepeaterProxy');

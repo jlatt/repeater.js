@@ -1,7 +1,7 @@
 // Create a new instance of a class.
 function create() {
-    var Cons = this;
-    return new Cons();
+    /* jshint newcap:false */
+    return new this();
 }
 
 // Inherit from a class, prototypically.
@@ -142,17 +142,21 @@ Repeater.prototype.addSource = function(source) {
     return this;
 };
 
+Repeater.prototype.hasSource = function(source) {
+    return source.onEmit.has(this.onReceive);
+};
+
 // map
 
-function MapRepeater(source, map) {
+function MapRepeater(source, mapFunc) {
     Repeater.call(this, source);
-    this.map = map;
+    this.mapFunc = mapFunc;
 }
 
 Repeater.beget(MapRepeater);
 
 MapRepeater.prototype.onReceive = function(values, clock) {
-    var value = this.map.apply(this, values);
+    var value = this.mapFunc.apply(this, values);
     Repeater.prototype.onReceive.call(this, [value], clock);
 };
 
@@ -163,36 +167,45 @@ Repeater.prototype.map = function(map) {
 
 // unique
 
-function UniqueRepeater(source) {
-    Repeater.call(this, source);
-}
+function UniqueFilter() {}
 
-Repeater.beget(UniqueRepeater);
+UniqueFilter.prototype.values = [];
 
-UniqueRepeater.prototype.values = null;
-
-UniqueRepeater.prototype.onReceive = function(values, clock) {
-    if (!_.isEqual(this.values, values)) {
+UniqueFilter.prototype.apply = function(context, values) {
+    var equal = this.valuesEqual(values);
+    if (!equal) {
         this.values = values;
     }
-    Repeater.prototype.onReceive.call(this, this.values, clock);
+    return !equal;
+};
+
+UniqueFilter.prototype.valuesEqual = function(values) {
+    if (this.values.length !== values.length) {
+        return false;
+    }
+    for (var i = 0, len = values.length; i < len; i += 1) {
+        if (!_.isEqual(this.values[i], values[i])) {
+            return false;
+        }
+    }
+    return true;
 };
 
 Repeater.prototype.unique = function() {
-    return new UniqueRepeater(this);
+    return this.filter(new UniqueFilter());
 };
 
 // filter
 
-function FilterRepeater(source, filter) {
+function FilterRepeater(source, filterFunc) {
     Repeater.call(this, source);
-    this.filter = filter;
+    this.filterFunc = filterFunc;
 }
 
 Repeater.beget(FilterRepeater);
 
 FilterRepeater.prototype.onReceive = function(values) {
-    if (this.filter.apply(this, values)) {
+    if (this.filterFunc.apply(this, values)) {
         Repeater.prototype.onReceive.apply(this, arguments);
     }
 };
