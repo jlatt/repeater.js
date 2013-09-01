@@ -1,6 +1,6 @@
 # repeater.js
 
-Depstate is a library for organizing code blocks. It borrows principles from
+Repeater is a library for organizing code blocks. It borrows principles from
 distributed computing and functional reactive programming.
 
 ## Build Requirements
