@@ -85,7 +85,7 @@ module('Repeater');
 testConstructor('Repeater');
 
 testClass('Repeater', 'emit', 6, function(r) {
-    r.onEmit.add(function(id, values, clock) {
+    r.onEmit.add(function(values) {
         strictEqual(values.length, 1);
         strictEqual(values[0], true);
     });
@@ -101,7 +101,7 @@ testClass('Repeater', 'map', 2, function(r1) {
 
     notEqual(r1.id, r2.id);
 
-    r2.onEmit.add(function(id, values, clock) {
+    r2.onEmit.add(function(values) {
         strictEqual(values[0], 5);
     });
 
