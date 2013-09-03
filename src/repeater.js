@@ -4,17 +4,32 @@ function create() {
     return new this();
 }
 
-// Inherit from a class, prototypically.
-//
-//     Constructor, this := Function
-function beget(Constructor) {
-    function Heir() {}
-    Heir.prototype = this.prototype;
-    Constructor.prototype = new Heir();
-    Constructor.prototype.constructor = Constructor;
-    Constructor.beget = beget;
-    return Constructor;
+function beget(Heir) {
+    Heir.prototype = new this.Prototype(Heir);
+    return Heir;
 }
+
+// Make a side-effect-free constructor for this function's prototype.
+function makeConstructor(Target) {
+    function Prototype(Constructor) {
+        this.constructor = Constructor; // `this` is a prototype
+    }
+    Prototype.prototype = Target.prototype;
+
+    Target.beget = beget;
+    Target.Prototype = Prototype;
+    return Target;
+}
+
+function FunctionLike() {}
+
+makeConstructor(FunctionLike);
+
+FunctionLike.prototype.apply = function(context, values) {
+    return this.run.apply(this, values);
+};
+
+FunctionLike.prototype.run = $.noop;
 
 // ## Vector Clocks
 //
@@ -93,7 +108,7 @@ function Repeater(source/*?*/) {
     }
 }
 
-Repeater.beget = beget;
+makeConstructor(Repeater);
 
 Repeater.prototype.clock = new VectorClock();
 
@@ -165,36 +180,6 @@ Repeater.prototype.map = function(map) {
     return new MapRepeater(this, map);
 };
 
-// unique
-
-function UniqueFilter() {}
-
-UniqueFilter.prototype.values = [];
-
-UniqueFilter.prototype.apply = function(context, values) {
-    var equal = this.valuesEqual(values);
-    if (!equal) {
-        this.values = values;
-    }
-    return !equal;
-};
-
-UniqueFilter.prototype.valuesEqual = function(values) {
-    if (this.values.length !== values.length) {
-        return false;
-    }
-    for (var i = 0, len = values.length; i < len; i += 1) {
-        if (!_.isEqual(this.values[i], values[i])) {
-            return false;
-        }
-    }
-    return true;
-};
-
-Repeater.prototype.unique = function() {
-    return this.filter(new UniqueFilter());
-};
-
 // filter
 
 function FilterRepeater(source, filterFunc) {
@@ -214,21 +199,107 @@ Repeater.prototype.filter = function(filter) {
     return new FilterRepeater(this, filter);
 };
 
+// unique
+
+function UniqueFilter() {}
+
+FunctionLike.beget(UniqueFilter);
+
+UniqueFilter.prototype.values = null;
+
+UniqueFilter.prototype.run = function() {
+    var equal = this.valuesEqual(arguments);
+    if (!equal) {
+        this.values = arguments;
+    }
+    return !equal;
+};
+
+UniqueFilter.prototype.valuesEqual = function(values) {
+    if (this.values === null) {
+        return false;
+    }
+    if (this.values.length !== values.length) {
+        return false;
+    }
+    for (var i = 0, len = values.length; i < len; i += 1) {
+        if (!_.isEqual(this.values[i], values[i])) {
+            return false;
+        }
+    }
+    return true;
+};
+
+Repeater.prototype.unique = function() {
+    return this.filter(new UniqueFilter());
+};
+
 function ChainPromise() {}
 
-ChainPromise.prototype.current = $.Deferred().resolve().promise();
+FunctionLike.beget(ChainPromise);
 
-ChainPromise.prototype.apply = function(context, values) {
+ChainPromise.prototype.current = null;
+
+ChainPromise.prototype.run = function(current) {
     var previous = this.current;
-    var current = this.current = values[0];
+    this.current = current;
+    if (previous === null) {
+        return current;
+    }
     function after() {
         return current;
     }
     return previous.then(after, after);
 };
 
+// Chain promises received from a repeater. Promises returned from this repeater
+// won't complete until after the previously received promise completes. Each
+// promise is chained on the previous one. This map is useful when promises
+// represent actions with side effects that must be incorporated in to the
+// program state before starting a new action.
 Repeater.prototype.chainPromise = function() {
     return this.map(new ChainPromise());
+};
+
+function LastPromiseRepeater(source) {
+    Repeater.call(this, source);
+}
+
+Repeater.beget(LastPromiseRepeater);
+
+LastPromiseRepeater.prototype.deferred = null;
+
+LastPromiseRepeater.prototype.current = null;
+
+LastPromiseRepeater.prototype.onReceive = function(values, clock) {
+    var newDeferred = this.deferred === null;
+    if (newDeferred) {
+        this.deferred = $.Deferred();
+    }
+
+    var current = this.current = values[0];
+    var repeater = this;
+    this.clock = this.clock.merge(clock);
+    this.current.then(function() {
+        repeater.onResolve(current, this, arguments);
+    }, this);
+
+    if (newDeferred) {
+        this.emit(this.deferred.promise());
+    }
+};
+
+LastPromiseRepeater.prototype.onResolve = function(promise, context, args) {
+    if (this.current !== promise) {
+        return;
+    }
+    var deferred = this.deferred;
+    delete this.deferred;
+    deferred.resolveWith(context, args);
+};
+
+Repeater.prototype.lastPromise = function() {
+    return new LastPromiseRepeater(this);
 };
 
 function UnPromise(source) {
@@ -237,32 +308,27 @@ function UnPromise(source) {
 
 Repeater.beget(UnPromise);
 
-UnPromise.prototype.onReceive = function(values, clock, source) {
-    var promise = this.current = values[0];
-    promise.then(_.bind(function() {
-        this.onResolve(promise, [arguments, clock, source]);
+UnPromise.prototype.onReceive = function(values, clock) {
+    values[0].then(_.bind(function() {
+        Repeater.prototype.onReceive.call(this, arguments, clock);
     }, this));
 };
 
-UnPromise.prototype.onResolve = function(promise, receiveArgs) {
-    if (this.current !== promise) {
-        return;
-    }
-    Repeater.prototype.onReceive.apply(this, receiveArgs);
-};
-
+// Unwrap resolved promise containers into values. No order is guaranteed. To
+// impose order, call this function on a repeater chain with `chainPromise` or
+// `lastPromise`.
 Repeater.prototype.unpromise = function() {
     return new UnPromise(this);
 };
 
-function AbortPromise() {}
+function AbortPreviousPromise() {}
 
-AbortPromise.prototype.current = $.Deferred().resolve().promise();
+AbortPreviousPromise.prototype.current = null;
 
-AbortPromise.prototype.apply = function(context, values) {
+AbortPreviousPromise.prototype.apply = function(context, values) {
     var previous = this.current;
     var promise = this.current = values[0];
-    if (_.isFunction(previous.abort)) {
+    if (!_.isNull(previous) && _.isFunction(previous.abort)) {
         try {
             previous.abort();
         } catch (ex) {}
@@ -270,14 +336,18 @@ AbortPromise.prototype.apply = function(context, values) {
     return promise;
 };
 
-Repeater.prototype.abortPromise = function() {
-    return this.map(new AbortPromise());
+// When receiving a new promise, attempt to abort the previous promise in
+// progress. This map is useful when promises represent idempotent actions, such
+// as an HTTP GET.
+Repeater.prototype.abortPreviousPromise = function() {
+    return this.map(new AbortPreviousPromise());
 };
 
 // ### class methods
 
 Repeater.create = create;
 
+// Run `sample` every `wait` milliseconds, emitting its return value.
 Repeater.sample = function(sample, wait) {
     // TODO class-ify
     var repeater = this.create();
@@ -355,10 +425,13 @@ JoinRepeater.prototype.onReceive = function(values, clock, source) {
     this.emitMany(_.flatten(this.values, /*shallow:*/true));
 };
 
-Repeater.join = function(/*repeater, ...*/) {
-    return new JoinRepeater(arguments);
+// Join the values of several repeaters together. Only when all values are
+// present and their clocks represent consistent, orthogonal state will it emit
+// an array of values. This function accepts varargs or nested arrays of
+// repeaters.
+Repeater.join = function(/*repeater, ..., arguments*/) {
+    return new JoinRepeater(_.flatten(arguments));
 };
-
 
 // ## `RepeaterProxy`
 //
@@ -374,6 +447,8 @@ function RepeaterProxy() {
     this.repeaters = {};
 }
 
+// Replay received arguments exactly. Unlike most repeaters, this repeater does
+// not emit clocks representing its own state. It exists merely as a proxy.
 function ReplayRepeater() {
     Repeater.call(this);
 }
@@ -436,6 +511,7 @@ this.repeater = (function(global, repeater, oldRepeater) {
 // ## jQuery extension
 
 $.fn.toRepeater = function() {
+    // TODO class-ify
     var $elements = this;
     var args = _.toArray(arguments);
     var repeater = Repeater.create();
@@ -446,5 +522,17 @@ $.fn.toRepeater = function() {
     repeater.onCancel.add(function() {
         $elements.off.apply($elements, args);
     });
+    return repeater;
+};
+
+$.repeater = {};
+
+$.repeater.windowSize = function() {
+    var $window = $(window);
+    var measure = function() {
+        return {'width': $window.width(), 'height': $window.height()};
+    };
+    var repeater = $window.toRepeater('resize').map(measure);
+    repeater.emit(measure());
     return repeater;
 };
