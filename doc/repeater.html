@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>repeater.js</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>repeater.js</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>(<span class="keyword">function</span>() {
+<span class="string">'use strict'</span>;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>Create a new instance of a class.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="function"><span class="keyword">function</span> <span class="title">create</span><span class="params">()</span> {</span>
+    <span class="comment">/* jshint newcap:false */</span>
+    <span class="keyword">return</span> <span class="keyword">new</span> <span class="keyword">this</span>();
+}
+
+<span class="function"><span class="keyword">function</span> <span class="title">beget</span><span class="params">(Heir)</span> {</span>
+    Heir.prototype = <span class="keyword">new</span> <span class="keyword">this</span>.Prototype(Heir);
+    <span class="keyword">return</span> Heir;
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>Make a side-effect-free constructor for this function&#39;s prototype.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="function"><span class="keyword">function</span> <span class="title">makeConstructor</span><span class="params">(Target)</span> {</span>
+    <span class="function"><span class="keyword">function</span> <span class="title">Prototype</span><span class="params">(Constructor)</span> {</span>
+        <span class="keyword">this</span>.constructor = Constructor; <span class="comment">// `this` is a prototype</span>
+    }
+    Prototype.prototype = Target.prototype;
+
+    Target.beget = beget;
+    Target.Prototype = Prototype;
+    <span class="keyword">return</span> Target;
+}
+
+<span class="function"><span class="keyword">function</span> <span class="title">FunctionLike</span><span class="params">()</span> {</span>}
+
+makeConstructor(FunctionLike);
+
+FunctionLike.prototype.apply = <span class="keyword">function</span>(context, values) {
+    <span class="keyword">return</span> <span class="keyword">this</span>.run.apply(<span class="keyword">this</span>, values);
+};
+
+FunctionLike.prototype.run = $.noop;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap for-h2">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <h2>Vector Clocks</h2>
+<p><a href="http://en.wikipedia.org/wiki/Vector_clock">Vector Clocks</a> provide event
+ordering without requiring time-based synchronization between multiple
+threads of execution.
+    Key := String
+    Count := Number, int &gt;= 0</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="comment">/**/</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>Create a new vector clock.</p>
+<pre><code>return := VectorClock</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="function"><span class="keyword">function</span> <span class="title">VectorClock</span><span class="params">()</span> {</span>
+    <span class="keyword">this</span>.keys = {};
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap for-h3">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <h3>instance methods</h3>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>VectorClock.prototype.toString = <span class="keyword">function</span>() {
+    <span class="keyword">return</span> JSON.stringify(<span class="keyword">this</span>);
+};
+
+VectorClock.prototype.toJSON = <span class="keyword">function</span>() {
+    <span class="keyword">return</span> <span class="keyword">this</span>.keys;
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>Get the keyed value, returning a default if necessary.</p>
+<pre><code>key := Key
+return := Count</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>VectorClock.prototype.get = <span class="keyword">function</span>(key) {
+    <span class="keyword">return</span> <span class="keyword">this</span>.has(key) ? <span class="keyword">this</span>.keys[key] : <span class="number">0</span>;
+};
+
+VectorClock.prototype.has = <span class="keyword">function</span>(key) {
+    <span class="keyword">return</span> <span class="keyword">this</span>.keys.hasOwnProperty(key);
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap for-h3">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <h3>constructors</h3>
+<p>Return a vector clock that follows only a specific key from the current
+clock.</p>
+<pre><code>key := Key
+return := VectorClock</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>VectorClock.prototype.next = <span class="keyword">function</span>(key) {
+    <span class="keyword">var</span> next = <span class="keyword">new</span> VectorClock();
+    next.keys[key] = <span class="keyword">this</span>.get(key) + <span class="number">1</span>;
+    <span class="keyword">return</span> next;
+};
+
+VectorClock.prototype.merge = <span class="keyword">function</span>(clock) {
+    <span class="keyword">var</span> outgoing = <span class="keyword">new</span> VectorClock();
+    _.each([<span class="keyword">this</span>, clock], <span class="keyword">function</span>(incoming) {
+        _.each(incoming.keys, <span class="keyword">function</span>(value, key) {
+            outgoing.keys[key] = Math.max(outgoing.get(key), value);
+        }, <span class="keyword">this</span>);
+    }, <span class="keyword">this</span>);
+    <span class="keyword">return</span> outgoing;
+};
+
+VectorClock.fromJSON = <span class="keyword">function</span>(obj) {
+    <span class="keyword">var</span> vc = <span class="keyword">new</span> VectorClock();
+    _.extend(vc.keys, obj);
+    <span class="keyword">return</span> vc;
+};
+
+<span class="function"><span class="keyword">function</span> <span class="title">Repeater</span><span class="params">(source<span class="comment">/*?*/</span>)</span> {</span>
+    <span class="keyword">this</span>.id = <span class="keyword">this</span>.idSequence.next();
+    <span class="keyword">this</span>.onEmit = $.Callbacks(<span class="string">'memory'</span>);
+    <span class="keyword">this</span>.onCancel = $.Callbacks(<span class="string">'memory once'</span>);
+    _.bindAll(<span class="keyword">this</span>, <span class="string">'onReceive'</span>);
+    <span class="keyword">if</span> (_.isObject(source)) {
+        <span class="keyword">this</span>.addSource(source);
+    }
+}
+
+makeConstructor(Repeater);
+
+Repeater.prototype.clock = <span class="keyword">new</span> VectorClock();
+
+Repeater.prototype.idSequence = {
+    <span class="string">'current'</span>: <span class="number">0</span>,
+
+    <span class="string">'next'</span>: <span class="keyword">function</span>() {
+        <span class="keyword">var</span> next = <span class="keyword">this</span>.current;
+        <span class="keyword">this</span>.current += <span class="number">1</span>;
+        <span class="keyword">return</span> next;
+    }
+};
+
+Repeater.prototype.cancel = <span class="keyword">function</span>() {
+    <span class="keyword">this</span>.onEmit
+        .disable()
+        .empty();
+    <span class="keyword">this</span>.onCancel
+        .fire(<span class="keyword">this</span>, [<span class="keyword">this</span>])
+        .empty();
+    <span class="keyword">return</span> <span class="keyword">this</span>;
+};
+
+Repeater.prototype.emit = <span class="keyword">function</span>(<span class="comment">/*value, ...*/</span>) {
+    <span class="keyword">return</span> <span class="keyword">this</span>.emitMany(arguments);
+};
+
+Repeater.prototype.emitMany = <span class="keyword">function</span>(values) {
+    <span class="keyword">this</span>.clock = <span class="keyword">this</span>.clock
+        .next(<span class="keyword">this</span>.id)
+        .merge(<span class="keyword">this</span>.clock);
+    <span class="keyword">this</span>.onEmit.fireWith(<span class="keyword">this</span>, [values, <span class="keyword">this</span>.clock, <span class="keyword">this</span>]);
+    <span class="keyword">return</span> <span class="keyword">this</span>;
+};
+
+Repeater.prototype.onReceive = <span class="keyword">function</span>(values, clock<span class="comment">/*, source*/</span>) {
+    <span class="keyword">this</span>.clock = <span class="keyword">this</span>.clock.merge(clock);
+    <span class="keyword">this</span>.emitMany(values);
+};
+
+Repeater.prototype.addSource = <span class="keyword">function</span>(source) {
+    <span class="keyword">this</span>.onCancel.add(<span class="keyword">function</span>() {
+        source.onEmit.remove(<span class="keyword">this</span>.onReceive);
+    });
+    source.onEmit.add(<span class="keyword">this</span>.onReceive);
+    <span class="keyword">return</span> <span class="keyword">this</span>;
+};
+
+Repeater.prototype.hasSource = <span class="keyword">function</span>(source) {
+    <span class="keyword">return</span> source.onEmit.has(<span class="keyword">this</span>.onReceive);
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>map</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="function"><span class="keyword">function</span> <span class="title">MapRepeater</span><span class="params">(source, mapFunc)</span> {</span>
+    Repeater.call(<span class="keyword">this</span>, source);
+    <span class="keyword">this</span>.mapFunc = mapFunc;
+}
+
+Repeater.beget(MapRepeater);
+
+MapRepeater.prototype.onReceive = <span class="keyword">function</span>(values, clock) {
+    <span class="keyword">var</span> value = <span class="keyword">this</span>.mapFunc.apply(<span class="keyword">this</span>, values);
+    Repeater.prototype.onReceive.call(<span class="keyword">this</span>, [value], clock);
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <pre><code>map := Repeater function(Value, ...) { } Value</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Repeater.prototype.map = <span class="keyword">function</span>(map) {
+    <span class="keyword">return</span> <span class="keyword">new</span> MapRepeater(<span class="keyword">this</span>, map);
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <p>lastN</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="function"><span class="keyword">function</span> <span class="title">LastN</span><span class="params">(source, n)</span> {</span>
+    Repeater.call(<span class="keyword">this</span>, source);
+    <span class="keyword">this</span>.n = n;
+    <span class="keyword">this</span>.values = [];
+}
+
+Repeater.beget(LastN);
+
+LastN.prototype.onReceive = <span class="keyword">function</span>(values, clock) {
+    <span class="keyword">this</span>.values.unshift(values[<span class="number">0</span>]);
+    <span class="keyword">if</span> (<span class="keyword">this</span>.values.length &gt; <span class="keyword">this</span>.n) {
+        <span class="keyword">this</span>.values.length = <span class="keyword">this</span>.n;
+    }
+    Repeater.prototype.onReceive.call(<span class="keyword">this</span>, <span class="keyword">this</span>.values, clock);
+};
+
+Repeater.prototype.lastN = <span class="keyword">function</span>(n) {
+    <span class="keyword">return</span> <span class="keyword">new</span> LastN(<span class="keyword">this</span>, n);
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>repeatSame</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="keyword">var</span> repeatSame = <span class="keyword">new</span> FunctionLike();
+
+repeatSame.run = <span class="keyword">function</span>(current, previous) {
+    <span class="keyword">return</span> _.isEqual(previous, current) ? previous : current;
+};
+
+Repeater.prototype.repeatSame = <span class="keyword">function</span>() {
+    <span class="keyword">return</span> <span class="keyword">this</span>
+        .lastN(<span class="number">2</span>)
+        .map(repeatSame);
+};
+
+<span class="function"><span class="keyword">function</span> <span class="title">ChainPromise</span><span class="params">()</span> {</span>}
+
+FunctionLike.beget(ChainPromise);
+
+ChainPromise.prototype.current = <span class="literal">null</span>;
+
+ChainPromise.prototype.run = <span class="keyword">function</span>(current) {
+    <span class="keyword">var</span> previous = <span class="keyword">this</span>.current;
+    <span class="keyword">this</span>.current = current;
+    <span class="keyword">if</span> (previous === <span class="literal">null</span>) {
+        <span class="keyword">return</span> current;
+    }
+    <span class="function"><span class="keyword">function</span> <span class="title">after</span><span class="params">()</span> {</span>
+        <span class="keyword">return</span> current;
+    }
+    <span class="keyword">return</span> previous.then(after, after);
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>Chain promises received from a repeater. Promises returned from this repeater
+won&#39;t complete until after the previously received promise completes. Each
+promise is chained on the previous one. This map is useful when promises
+represent actions with side effects that must be incorporated in to the
+program state before starting a new action.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Repeater.prototype.chainPromise = <span class="keyword">function</span>() {
+    <span class="keyword">return</span> <span class="keyword">this</span>.map(<span class="keyword">new</span> ChainPromise());
+};
+
+<span class="function"><span class="keyword">function</span> <span class="title">LastPromiseRepeater</span><span class="params">(source)</span> {</span>
+    Repeater.call(<span class="keyword">this</span>, source);
+}
+
+Repeater.beget(LastPromiseRepeater);
+
+LastPromiseRepeater.prototype.deferred = <span class="literal">null</span>;
+
+LastPromiseRepeater.prototype.current = <span class="literal">null</span>;
+
+LastPromiseRepeater.prototype.onReceive = <span class="keyword">function</span>(values, clock) {
+    <span class="keyword">var</span> newDeferred = <span class="keyword">this</span>.deferred === <span class="literal">null</span>;
+    <span class="keyword">if</span> (newDeferred) {
+        <span class="keyword">this</span>.deferred = $.Deferred();
+    }
+
+    <span class="keyword">var</span> current = <span class="keyword">this</span>.current = values[<span class="number">0</span>];
+    <span class="keyword">var</span> repeater = <span class="keyword">this</span>;
+    <span class="keyword">this</span>.clock = <span class="keyword">this</span>.clock.merge(clock);
+    <span class="keyword">this</span>.current.then(<span class="keyword">function</span>() {
+        repeater.onResolve(current, <span class="keyword">this</span>, arguments);
+    }, <span class="keyword">this</span>);
+
+    <span class="keyword">if</span> (newDeferred) {
+        <span class="keyword">this</span>.emit(<span class="keyword">this</span>.deferred.promise());
+    }
+};
+
+LastPromiseRepeater.prototype.onResolve = <span class="keyword">function</span>(promise, context, args) {
+    <span class="keyword">if</span> (<span class="keyword">this</span>.current !== promise) {
+        <span class="keyword">return</span>;
+    }
+    <span class="keyword">var</span> deferred = <span class="keyword">this</span>.deferred;
+    <span class="keyword">delete</span> <span class="keyword">this</span>.deferred;
+    deferred.resolveWith(context, args);
+};
+
+Repeater.prototype.lastPromise = <span class="keyword">function</span>() {
+    <span class="keyword">return</span> <span class="keyword">new</span> LastPromiseRepeater(<span class="keyword">this</span>);
+};
+
+<span class="function"><span class="keyword">function</span> <span class="title">UnPromise</span><span class="params">(source)</span> {</span>
+    Repeater.call(<span class="keyword">this</span>, source);
+}
+
+Repeater.beget(UnPromise);
+
+UnPromise.prototype.onReceive = <span class="keyword">function</span>(values, clock) {
+    values[<span class="number">0</span>].then(_.bind(<span class="keyword">function</span>() {
+        Repeater.prototype.onReceive.call(<span class="keyword">this</span>, arguments, clock);
+    }, <span class="keyword">this</span>));
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>Unwrap resolved promise containers into values. No order is guaranteed. To
+impose order, call this function on a repeater chain with <code>chainPromise</code> or
+<code>lastPromise</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Repeater.prototype.unpromise = <span class="keyword">function</span>() {
+    <span class="keyword">return</span> <span class="keyword">new</span> UnPromise(<span class="keyword">this</span>);
+};
+
+<span class="function"><span class="keyword">function</span> <span class="title">AbortPreviousXHR</span><span class="params">()</span> {</span>}
+
+AbortPreviousXHR.prototype.current = <span class="literal">null</span>;
+
+AbortPreviousXHR.prototype.apply = <span class="keyword">function</span>(context, values) {
+    <span class="keyword">var</span> previous = <span class="keyword">this</span>.current;
+    <span class="keyword">var</span> promise = <span class="keyword">this</span>.current = values[<span class="number">0</span>];
+    <span class="keyword">if</span> (!_.isNull(previous) &amp;&amp; _.isFunction(previous.abort)) {
+        <span class="keyword">try</span> {
+            previous.abort();
+        } <span class="keyword">catch</span> (ex) {}
+    }
+    <span class="keyword">return</span> promise;
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p>When receiving a new promise, attempt to abort the previous promise in
+progress. This map is useful when promises represent idempotent actions, such
+as an HTTP GET.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Repeater.prototype.abortPreviousXHR = <span class="keyword">function</span>() {
+    <span class="keyword">return</span> <span class="keyword">this</span>.map(<span class="keyword">new</span> AbortPreviousXHR());
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap for-h3">
+                <a class="pilcrow" href="#section-16">&#182;</a>
+              </div>
+              <h3>class methods</h3>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Repeater.create = create;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <p>Run <code>sample</code> every <code>wait</code> milliseconds, emitting its return value.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Repeater.sample = <span class="keyword">function</span>(sample, wait) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <p>TODO class-ify</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="keyword">var</span> repeater = <span class="keyword">this</span>.create();
+    <span class="keyword">var</span> handle = window.setInterval(sample, wait);
+    repeater.onCancel.add(<span class="keyword">function</span>() {
+        window.clearInterval(handle);
+    });
+    <span class="keyword">return</span> repeater;
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
+              </div>
+              <p>join</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="function"><span class="keyword">function</span> <span class="title">VectorClockArray</span><span class="params">()</span> {</span>
+    <span class="keyword">this</span>.clocks = [];
+}
+
+VectorClockArray.prototype.set = <span class="keyword">function</span>(index, clock) {
+    <span class="keyword">this</span>.clocks[index] = clock;
+    <span class="keyword">return</span> <span class="keyword">this</span>;
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-20">&#182;</a>
+              </div>
+              <p>Attempt to merge several vector clocks together. If clocks diverge on any
+keys, return <code>null</code>.</p>
+<pre><code>return := VectorClock || null</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>VectorClockArray.prototype.merge = <span class="keyword">function</span>() {
+    <span class="keyword">if</span> (<span class="keyword">this</span>.clocks.length === <span class="number">1</span>) {
+        <span class="keyword">return</span> arguments[<span class="number">1</span>];
+    }
+    <span class="keyword">if</span> ((<span class="keyword">this</span>.clocks.length === <span class="number">0</span>) || <span class="keyword">this</span>.isSparse()) {
+        <span class="keyword">return</span> <span class="literal">null</span>;
+    }
+
+    <span class="keyword">var</span> merged = <span class="keyword">new</span> VectorClock();
+    <span class="keyword">var</span> isUnified = _.all(<span class="keyword">this</span>.clocks, <span class="keyword">function</span>(clock) {
+        <span class="keyword">return</span> _.all(clock.keys, <span class="keyword">function</span>(value, key) {
+            <span class="keyword">if</span> (merged.has(key) &amp;&amp; (merged.get(key) !== value)) {
+                <span class="keyword">return</span> <span class="literal">false</span>;
+            }
+            merged.keys[key] = value;
+            <span class="keyword">return</span> <span class="literal">true</span>;
+        }, <span class="keyword">this</span>);
+    }, <span class="keyword">this</span>);
+    <span class="keyword">return</span> isUnified ? merged : <span class="literal">null</span>;
+};
+
+VectorClockArray.prototype.isSparse = <span class="keyword">function</span>() {
+    <span class="keyword">return</span> <span class="keyword">this</span>.clocks.length !== _.keys(<span class="keyword">this</span>.clock).length;
+};
+
+<span class="function"><span class="keyword">function</span> <span class="title">JoinRepeater</span><span class="params">(sources)</span> {</span>
+    Repeater.call(<span class="keyword">this</span>);
+    <span class="keyword">this</span>.values = [];
+    <span class="keyword">this</span>.clocks = <span class="keyword">new</span> VectorClockArray();
+    <span class="keyword">this</span>.indexOf = {}; <span class="comment">// id =&gt; index</span>
+    _.each(sources, <span class="keyword">function</span>(source, index) {
+        <span class="keyword">this</span>.indexOf[source.id] = index;
+        <span class="keyword">this</span>.addSource(source);
+    }, <span class="keyword">this</span>);
+}
+
+Repeater.beget(JoinRepeater);
+
+JoinRepeater.prototype.onReceive = <span class="keyword">function</span>(values, clock, source) {
+    <span class="keyword">var</span> index = <span class="keyword">this</span>.indexOf[source.id];
+    <span class="keyword">this</span>.values[index] = values;
+    <span class="keyword">this</span>.clocks.set(index, clock);
+    <span class="keyword">var</span> merged = <span class="keyword">this</span>.clocks.merge();
+    <span class="keyword">if</span> (merged === <span class="literal">null</span>) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-21">&#182;</a>
+              </div>
+              <p>Received arguments have inconsistent clocks. We only emit arrays of
+values with consistent clocks.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="keyword">return</span>;
+    }
+    <span class="keyword">this</span>.clock = <span class="keyword">this</span>.clock.merge(merged);
+    <span class="keyword">this</span>.emitMany(_.flatten(<span class="keyword">this</span>.values, <span class="comment">/*shallow:*/</span><span class="literal">true</span>));
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-22">&#182;</a>
+              </div>
+              <p>Join the values of several repeaters together. Only when all values are
+present and their clocks represent consistent, orthogonal state will it emit
+an array of values. This function accepts varargs or nested arrays of
+repeaters.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Repeater.join = <span class="keyword">function</span>(<span class="comment">/*repeater, ..., arguments*/</span>) {
+    <span class="keyword">return</span> <span class="keyword">new</span> JoinRepeater(_.flatten(arguments));
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="pilwrap for-h2">
+                <a class="pilcrow" href="#section-23">&#182;</a>
+              </div>
+              <h2><code>RepeaterProxy</code></h2>
+<p>Sometimes it is helpful to have named indirection between <code>Repeater</code>s. Using
+a proxy, the order of creation of repeaters doesn&#39;t matter because named
+placeholders are used.</p>
+<p>Create a new <code>RepeaterProxy</code>.</p>
+<pre><code>return := this</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="function"><span class="keyword">function</span> <span class="title">RepeaterProxy</span><span class="params">()</span> {</span>
+    <span class="keyword">this</span>.repeaters = {};
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-24">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-24">&#182;</a>
+              </div>
+              <p>Replay received arguments exactly. Unlike most repeaters, this repeater does
+not emit clocks representing its own state. It exists merely as a proxy.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="function"><span class="keyword">function</span> <span class="title">ReplayRepeater</span><span class="params">()</span> {</span>
+    Repeater.call(<span class="keyword">this</span>);
+}
+
+Repeater.beget(ReplayRepeater);
+
+ReplayRepeater.prototype.onReceive = <span class="keyword">function</span>(values, clock, source) {
+    <span class="keyword">this</span>.onEmit.fireWith(source, arguments);
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-25">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-25">&#182;</a>
+              </div>
+              <p>Get a named repeater. Create one, if necessary.</p>
+<pre><code>name := String
+return := Repeater</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>RepeaterProxy.prototype.get = <span class="keyword">function</span>(name) {
+    <span class="keyword">if</span> (<span class="keyword">this</span>.repeaters.hasOwnProperty(name)) {
+        <span class="keyword">return</span> <span class="keyword">this</span>.repeaters[name];
+    }
+    <span class="keyword">var</span> repeater = <span class="keyword">this</span>.repeaters[name] = <span class="keyword">new</span> ReplayRepeater();
+    <span class="keyword">return</span> repeater;
+};
+
+RepeaterProxy.prototype.getMany = <span class="keyword">function</span>(<span class="comment">/*name, ...*/</span>) {
+    <span class="keyword">return</span> _
+        .chain(arguments)
+        .flatten(<span class="comment">/*shallow:*/</span><span class="literal">true</span>)
+        .map(<span class="keyword">this</span>.get, <span class="keyword">this</span>)
+        .value();
+};
+
+RepeaterProxy.prototype.set = <span class="keyword">function</span>(name, repeater) {
+    <span class="keyword">this</span>.get(name).addSource(repeater);
+    <span class="keyword">return</span> <span class="keyword">this</span>;
+};
+
+RepeaterProxy.prototype.setMany = <span class="keyword">function</span>(repeaters) {
+    _.each(repeaters, <span class="keyword">function</span>(repeater, name) {
+        <span class="keyword">this</span>.set(name, repeater);
+    }, <span class="keyword">this</span>);
+    <span class="keyword">return</span> <span class="keyword">this</span>;
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-26">
+            <div class="annotation">
+              
+              <div class="pilwrap for-h3">
+                <a class="pilcrow" href="#section-26">&#182;</a>
+              </div>
+              <h3>class methods</h3>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>RepeaterProxy.create = create;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-27">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-27">&#182;</a>
+              </div>
+              <p>Export.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="keyword">this</span>.repeater = (<span class="keyword">function</span>(global, repeater, oldRepeater) {
+    repeater.VectorClock   = VectorClock;
+    repeater.Repeater      = Repeater;
+    repeater.RepeaterProxy = RepeaterProxy;
+    repeater.noConflict    = _.once(<span class="keyword">function</span>() {
+        global.repeater = oldRepeater;
+        <span class="keyword">return</span> repeater;
+    });
+
+    <span class="keyword">return</span> repeater;
+})(<span class="keyword">this</span>, {}, <span class="keyword">this</span>.repeater);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-28">
+            <div class="annotation">
+              
+              <div class="pilwrap for-h2">
+                <a class="pilcrow" href="#section-28">&#182;</a>
+              </div>
+              <h2>jQuery extension</h2>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>$.fn.toRepeater = <span class="keyword">function</span>() {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-29">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-29">&#182;</a>
+              </div>
+              <p>TODO class-ify</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="keyword">var</span> $elements = <span class="keyword">this</span>;
+    <span class="keyword">var</span> args = _.toArray(arguments);
+    <span class="keyword">var</span> repeater = Repeater.create();
+    args.push(<span class="keyword">function</span>() {
+        repeater.emitMany(arguments);
+    });
+    $elements.on.apply($elements, args);
+    repeater.onCancel.add(<span class="keyword">function</span>() {
+        $elements.off.apply($elements, args);
+    });
+    <span class="keyword">return</span> repeater;
+};
+
+$.repeater = {};
+
+$.repeater.windowSize = <span class="keyword">function</span>() {
+    <span class="keyword">var</span> $window = $(window);
+    <span class="keyword">var</span> measure = <span class="keyword">function</span>() {
+        <span class="keyword">return</span> {<span class="string">'width'</span>: $window.width(), <span class="string">'height'</span>: $window.height()};
+    };
+    <span class="keyword">var</span> repeater = $window.toRepeater(<span class="string">'resize'</span>).map(measure);
+    repeater.emit(measure());
+    <span class="keyword">return</span> repeater;
+};
+
+}).call(<span class="keyword">this</span>);</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
