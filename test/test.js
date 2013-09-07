@@ -45,26 +45,26 @@ testClass('VectorClock', 'has', function(vc) {
     }, this);
 });
 
-testClass('VectorClock', 'next', function(vc1) {
+testClass('VectorClock', 'increment', function(vc1) {
     var key = 502;
     function check1() {
         strictEqual(vc1.get(key), 0, 'vc1 key is 0');
     }
     check1();
-    var vc2 = vc1.next(key);
+    var vc2 = vc1.increment(key);
     function check2() {
         strictEqual(vc2.get(key), 1, 'vc2 key is 1');
     }
     check2();
     check1();
-    var vc3 = vc2.next(key);
+    var vc3 = vc2.increment(key);
     function check3() {
         strictEqual(vc3.get(key), 2, 'vc3 key is 2');
     }
     check3();
     check2();
     check1();
-    var vc4 = vc1.next(key);
+    var vc4 = vc1.increment(key);
     strictEqual(vc4.get(key), 1, 'vc4 key is 1');
     check3();
     check2();

@@ -74,25 +74,24 @@ VectorClock.prototype.has = function(key) {
 
 // ### constructors
 
-// Return a vector clock that follows only a specific key from the current
-// clock.
+// Return a new clock with a single key incremented.
 //
 //     key := Key
 //     return := VectorClock
-VectorClock.prototype.next = function(key) {
-    var next = new VectorClock();
-    next.keys[key] = this.get(key) + 1;
-    return next;
+VectorClock.prototype.increment = function(key) {
+    var incremented = new VectorClock();
+    _.extend(incremented.keys, this.keys);
+    incremented.keys[key] = this.get(key) + 1;
+    return incremented;
 };
 
 // Merge a clock into this clock, taking the maximum counts from each key
 // present in each clock.
-VectorClock.prototype.merge = function(clock) {
+VectorClock.prototype.merge = function(incoming) {
     var outgoing = new VectorClock();
-    _.each([this, clock], function(incoming) {
-        _.each(incoming.keys, function(value, key) {
-            outgoing.keys[key] = Math.max(outgoing.get(key), value);
-        }, this);
+    _.extend(outgoing.keys, this.keys);
+    _.each(incoming.keys, function(count, key) {
+        outgoing.keys[key] = Math.max(outgoing.get(key), count);
     }, this);
     return outgoing;
 };
@@ -149,9 +148,7 @@ Repeater.prototype.emit = function(/*value, ...*/) {
 
 // Emit an arraylike of values. Internal clocks are updated.
 Repeater.prototype.emitMany = function(values) {
-    this.clock = this.clock
-        .next(this.id)
-        .merge(this.clock);
+    this.clock = this.clock.increment(this.id);
     this.onEmit.fireWith(this, [values, this.clock, this]);
     return this;
 };
