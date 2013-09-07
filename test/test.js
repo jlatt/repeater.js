@@ -4,7 +4,6 @@ function testConstructor(Constructor) {
     });
 }
 
-
 function testClass(Constructor) {
     var args = _(arguments).slice(1);
     var body = args.pop();
@@ -93,6 +92,11 @@ module('Repeater');
 
 testConstructor('Repeater');
 
+testClass('Repeater', 'id', function(r1) {
+    var r2 = r1.map(_.identity);
+    notEqual(r2.id, r1.id, 'r1 and r2 have different ids');
+});
+
 testClass('Repeater', 'emit', 6, function(r) {
     r.onEmit.add(function(values) {
         strictEqual(values.length, 1);
@@ -103,40 +107,57 @@ testClass('Repeater', 'emit', 6, function(r) {
     r.emit(true);
 });
 
-function TestMapper(expected) {
+function TestMapper(expected, test) {
     this.expected = expected;
+    if (_.isFunction(test)) {
+        this.test = test;
+    }
 }
 
-TestMapper.prototype.apply = function(context, values) {
-    var exp = this.expected.shift();
+TestMapper.deepEqual = function(values, exp) {
+    return deepEqual(values, exp, 'emits' + JSON.stringify(values));
+};
+
+TestMapper.prototype.test = function(values, exp) {
     strictEqual(values[0], exp, 'emits ' + exp);
 };
 
-testClass('Repeater', 'map', 3, function(r1) {
-    var r2 = r1.map(function(a, b, c) {
-        return a + b - c;
-    });
-    notEqual(r2.id, r1.id, 'r1 and r2 have different ids');
-    r2.map(new TestMapper([5, 5]));
-    r1.emit(10, 3, 8);
-    r1.emit(6, 0, 1);
+TestMapper.prototype.apply = function(context, values) {
+    var exp = this.expected.shift();
+    this.test(values, exp, 'emits ' + exp);
+};
+
+testClass('Repeater', 'map', function(repeater) {
+    var expected = [5, 5];
+    expect(expected.length);
+    repeater
+        .map(function(a, b, c) { return a + b - c; })
+        .map(new TestMapper(expected));
+    repeater
+        .emit(10, 3, 8)
+        .emit(6, 0, 1);
 });
 
-testClass('Repeater', 'filter', function(r1) {
-    var r2 = r1.filter(function(v) {
-        return v > 5;
-    });
-    r2.map(new TestMapper(_.range(6, 11)));
-    _.chain(1).range(11).each(function(v) {
-        r1.emit(v);
+testClass('Repeater', 'lastN', function(repeater) {
+    var expected = [[1], [2, 1], [3, 2, 1], [4, 3, 2]];
+    expect(expected.length);
+    repeater
+        .lastN(3)
+        .map(new TestMapper(expected, TestMapper.deepEqual));
+    _.chain(1).range(5).each(function(v) {
+        repeater.emit(v);
     }, this);
 });
 
-testClass('Repeater', 'unique', 4, function(r1) {
-    var r2 = r1.unique();
-    r2.map(new TestMapper([1, 2, 3, 2]));
-    _.each([1, 1, 2, 3, 3, 2], function(v) {
-        r1.emit(v);
+testClass('Repeater', 'repeatSame', function(repeater) {
+    var send = [{'foo': true}, {'foo': true}, {'foo': false}];
+    var expected = [send[0], send[0], send[2]];
+    expect(expected.length);
+    repeater
+        .repeatSame()
+        .map(new TestMapper(expected));
+    _.each(send, function(value) {
+        repeater.emit(value);
     }, this);
 });
 

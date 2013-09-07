@@ -175,63 +175,45 @@ MapRepeater.prototype.onReceive = function(values, clock) {
     Repeater.prototype.onReceive.call(this, [value], clock);
 };
 
-//     map := function(Value, ...) { } Value
+//     map := Repeater function(Value, ...) { } Value
 Repeater.prototype.map = function(map) {
     return new MapRepeater(this, map);
 };
 
-// filter
+// lastN
 
-function FilterRepeater(source, filterFunc) {
+function LastN(source, n) {
     Repeater.call(this, source);
-    this.filterFunc = filterFunc;
+    this.n = n;
+    this.values = [];
 }
 
-Repeater.beget(FilterRepeater);
+Repeater.beget(LastN);
 
-FilterRepeater.prototype.onReceive = function(values) {
-    if (this.filterFunc.apply(this, values)) {
-        Repeater.prototype.onReceive.apply(this, arguments);
+LastN.prototype.onReceive = function(values, clock) {
+    this.values.unshift(values[0]);
+    if (this.values.length > this.n) {
+        this.values.length = this.n;
     }
+    Repeater.prototype.onReceive.call(this, this.values, clock);
 };
 
-Repeater.prototype.filter = function(filter) {
-    return new FilterRepeater(this, filter);
+Repeater.prototype.lastN = function(n) {
+    return new LastN(this, n);
 };
 
-// unique
+// repeatSame
 
-function UniqueFilter() {}
+var repeatSame = new FunctionLike();
 
-FunctionLike.beget(UniqueFilter);
-
-UniqueFilter.prototype.values = null;
-
-UniqueFilter.prototype.run = function() {
-    var equal = this.valuesEqual(arguments);
-    if (!equal) {
-        this.values = arguments;
-    }
-    return !equal;
+repeatSame.run = function(current, previous) {
+    return _.isEqual(previous, current) ? previous : current;
 };
 
-UniqueFilter.prototype.valuesEqual = function(values) {
-    if (this.values === null) {
-        return false;
-    }
-    if (this.values.length !== values.length) {
-        return false;
-    }
-    for (var i = 0, len = values.length; i < len; i += 1) {
-        if (!_.isEqual(this.values[i], values[i])) {
-            return false;
-        }
-    }
-    return true;
-};
-
-Repeater.prototype.unique = function() {
-    return this.filter(new UniqueFilter());
+Repeater.prototype.repeatSame = function() {
+    return this
+        .lastN(2)
+        .map(repeatSame);
 };
 
 function ChainPromise() {}
@@ -321,11 +303,11 @@ Repeater.prototype.unpromise = function() {
     return new UnPromise(this);
 };
 
-function AbortPreviousPromise() {}
+function AbortPreviousXHR() {}
 
-AbortPreviousPromise.prototype.current = null;
+AbortPreviousXHR.prototype.current = null;
 
-AbortPreviousPromise.prototype.apply = function(context, values) {
+AbortPreviousXHR.prototype.apply = function(context, values) {
     var previous = this.current;
     var promise = this.current = values[0];
     if (!_.isNull(previous) && _.isFunction(previous.abort)) {
@@ -339,8 +321,8 @@ AbortPreviousPromise.prototype.apply = function(context, values) {
 // When receiving a new promise, attempt to abort the previous promise in
 // progress. This map is useful when promises represent idempotent actions, such
 // as an HTTP GET.
-Repeater.prototype.abortPreviousPromise = function() {
-    return this.map(new AbortPreviousPromise());
+Repeater.prototype.abortPreviousXHR = function() {
+    return this.map(new AbortPreviousXHR());
 };
 
 // ### class methods
