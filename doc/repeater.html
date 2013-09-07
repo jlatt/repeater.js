@@ -30,7 +30,7 @@
               
             </div>
             
-            <div class="content"><div class='highlight'><pre>(<span class="keyword">function</span>() {
+            <div class="content"><div class='highlight'><pre>(<span class="keyword">function</span>(_, jQuery) {
 <span class="string">'use strict'</span>;</pre></div></div>
             
         </li>
@@ -1098,10 +1098,10 @@ repeaters.</p>
     repeater.VectorClock   = VectorClock;
     repeater.Repeater      = Repeater;
     repeater.RepeaterProxy = RepeaterProxy;
-    repeater.noConflict    = _.once(<span class="keyword">function</span>() {
+    repeater.noConflict    = <span class="keyword">function</span>() {
         global.repeater = oldRepeater;
         <span class="keyword">return</span> repeater;
-    });
+    };
 
     <span class="keyword">return</span> repeater;
 })(<span class="keyword">this</span>, {}, <span class="keyword">this</span>.repeater);</pre></div></div>
@@ -1119,24 +1119,23 @@ repeaters.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>(<span class="keyword">function</span>($) {
-    <span class="keyword">var</span> $window = $(window),
-        $document = $(document);
+            <div class="content"><div class='highlight'><pre><span class="keyword">var</span> $window = $(window),
+    $document = $(document);
 
-    <span class="function"><span class="keyword">function</span> <span class="title">JQueryRepeater</span><span class="params">($elements, onArgs)</span> {</span>
-        Repeater.call(<span class="keyword">this</span>);
-        <span class="keyword">this</span>.$elements = $elements;
-        <span class="keyword">var</span> args = _.toArray(onArgs);
-        args.push(_.bind(<span class="keyword">function</span>() {
-            <span class="keyword">this</span>.emitArray(arguments);
-        }, <span class="keyword">this</span>));
-        $elements.on.apply($elements, args);
-        <span class="keyword">this</span>.onCancel.add(<span class="keyword">function</span>() {
-            $elements.off.apply($elements, args);
-        });
-    }
+<span class="function"><span class="keyword">function</span> <span class="title">JQueryRepeater</span><span class="params">($elements, onArgs)</span> {</span>
+    Repeater.call(<span class="keyword">this</span>);
+    <span class="keyword">this</span>.$elements = $elements;
+    <span class="keyword">var</span> args = _.toArray(onArgs);
+    args.push(_.bind(<span class="keyword">function</span>() {
+        <span class="keyword">this</span>.emitArray(arguments);
+    }, <span class="keyword">this</span>));
+    $elements.on.apply($elements, args);
+    <span class="keyword">this</span>.onCancel.add(<span class="keyword">function</span>() {
+        $elements.off.apply($elements, args);
+    });
+}
 
-    Repeater.beget(JQueryRepeater);</pre></div></div>
+Repeater.beget(JQueryRepeater);</pre></div></div>
             
         </li>
         
@@ -1152,15 +1151,15 @@ expected, but without the callback.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    $.fn.toRepeater = <span class="keyword">function</span>() {
-        <span class="keyword">return</span> <span class="keyword">new</span> JQueryRepeater(<span class="keyword">this</span>, arguments);
-    };
+            <div class="content"><div class='highlight'><pre>$.fn.toRepeater = <span class="keyword">function</span>() {
+    <span class="keyword">return</span> <span class="keyword">new</span> JQueryRepeater(<span class="keyword">this</span>, arguments);
+};
 
-    <span class="keyword">var</span> resizeRepeater = _.once(<span class="keyword">function</span>() {
-        <span class="keyword">return</span> $window.toRepeater(<span class="string">'resize'</span>);
-    });
+<span class="keyword">var</span> resizeRepeater = _.once(<span class="keyword">function</span>() {
+    <span class="keyword">return</span> $window.toRepeater(<span class="string">'resize'</span>);
+});
 
-    $.repeater = {};</pre></div></div>
+$.repeater = {};</pre></div></div>
             
         </li>
         
@@ -1171,19 +1170,19 @@ expected, but without the callback.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-51">&#182;</a>
               </div>
-              <p>Emit window size as a repeater. Size is measured immediately and then on
-all <code>resize</code> events.</p>
+              <p>Emit window size as a repeater. Size is measured immediately and then on all
+<code>resize</code> events.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    $.repeater.windowSize = _.once(<span class="keyword">function</span>() {
-        <span class="keyword">var</span> measure = <span class="keyword">function</span>() {
-            <span class="keyword">return</span> {<span class="string">'width'</span>: $window.width(), <span class="string">'height'</span>: $window.height()};
-        };
-        <span class="keyword">return</span> resizeRepeater()
-            .map(measure)
-            .emit(measure());
-    });</pre></div></div>
+            <div class="content"><div class='highlight'><pre>$.repeater.windowSize = _.once(<span class="keyword">function</span>() {
+    <span class="keyword">var</span> measure = <span class="keyword">function</span>() {
+        <span class="keyword">return</span> {<span class="string">'width'</span>: $window.width(), <span class="string">'height'</span>: $window.height()};
+    };
+    <span class="keyword">return</span> resizeRepeater()
+        .map(measure)
+        .emit(measure());
+});</pre></div></div>
             
         </li>
         
@@ -1194,22 +1193,21 @@ all <code>resize</code> events.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-52">&#182;</a>
               </div>
-              <p>Emit document size as a repeater. Size is measured immediately and then
-on all <code>resize</code> events.</p>
+              <p>Emit document size as a repeater. Size is measured immediately and then on
+all <code>resize</code> events.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    $.repeater.documentSize = _.once(<span class="keyword">function</span>() {
-        <span class="keyword">var</span> measure = <span class="keyword">function</span>() {
-            <span class="keyword">return</span> {<span class="string">'width'</span>: $document.width(), <span class="string">'height'</span>: $document.height()};
-        };
-        <span class="keyword">return</span> resizeRepeater()
-            .map(measure)
-            .emit(measure());
-    });
-}).call(<span class="keyword">this</span>, jQuery);
+            <div class="content"><div class='highlight'><pre>$.repeater.documentSize = _.once(<span class="keyword">function</span>() {
+    <span class="keyword">var</span> measure = <span class="keyword">function</span>() {
+        <span class="keyword">return</span> {<span class="string">'width'</span>: $document.width(), <span class="string">'height'</span>: $document.height()};
+    };
+    <span class="keyword">return</span> resizeRepeater()
+        .map(measure)
+        .emit(measure());
+});
 
-}).call(<span class="keyword">this</span>);</pre></div></div>
+}).call(<span class="keyword">this</span>, _, jQuery);</pre></div></div>
             
         </li>
         
