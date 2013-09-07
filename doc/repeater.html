@@ -209,17 +209,17 @@ VectorClock.prototype.has = <span class="keyword">function</span>(key) {
                 <a class="pilcrow" href="#section-10">&#182;</a>
               </div>
               <h3>constructors</h3>
-<p>Return a vector clock that follows only a specific key from the current
-clock.</p>
+<p>Return a new clock with a single key incremented.</p>
 <pre><code>key := Key
 return := VectorClock</code></pre>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>VectorClock.prototype.next = <span class="keyword">function</span>(key) {
-    <span class="keyword">var</span> next = <span class="keyword">new</span> VectorClock();
-    next.keys[key] = <span class="keyword">this</span>.get(key) + <span class="number">1</span>;
-    <span class="keyword">return</span> next;
+            <div class="content"><div class='highlight'><pre>VectorClock.prototype.increment = <span class="keyword">function</span>(key) {
+    <span class="keyword">var</span> incremented = <span class="keyword">new</span> VectorClock();
+    _.extend(incremented.keys, <span class="keyword">this</span>.keys);
+    incremented.keys[key] = <span class="keyword">this</span>.get(key) + <span class="number">1</span>;
+    <span class="keyword">return</span> incremented;
 };</pre></div></div>
             
         </li>
@@ -236,12 +236,11 @@ present in each clock.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>VectorClock.prototype.merge = <span class="keyword">function</span>(clock) {
+            <div class="content"><div class='highlight'><pre>VectorClock.prototype.merge = <span class="keyword">function</span>(incoming) {
     <span class="keyword">var</span> outgoing = <span class="keyword">new</span> VectorClock();
-    _.each([<span class="keyword">this</span>, clock], <span class="keyword">function</span>(incoming) {
-        _.each(incoming.keys, <span class="keyword">function</span>(value, key) {
-            outgoing.keys[key] = Math.max(outgoing.get(key), value);
-        }, <span class="keyword">this</span>);
+    _.extend(outgoing.keys, <span class="keyword">this</span>.keys);
+    _.each(incoming.keys, <span class="keyword">function</span>(count, key) {
+        outgoing.keys[key] = Math.max(outgoing.get(key), count);
     }, <span class="keyword">this</span>);
     <span class="keyword">return</span> outgoing;
 };</pre></div></div>
@@ -382,9 +381,7 @@ makeConstructor(Repeater);</pre></div></div>
             </div>
             
             <div class="content"><div class='highlight'><pre>Repeater.prototype.emitMany = <span class="keyword">function</span>(values) {
-    <span class="keyword">this</span>.clock = <span class="keyword">this</span>.clock
-        .next(<span class="keyword">this</span>.id)
-        .merge(<span class="keyword">this</span>.clock);
+    <span class="keyword">this</span>.clock = <span class="keyword">this</span>.clock.increment(<span class="keyword">this</span>.id);
     <span class="keyword">this</span>.onEmit.fireWith(<span class="keyword">this</span>, [values, <span class="keyword">this</span>.clock, <span class="keyword">this</span>]);
     <span class="keyword">return</span> <span class="keyword">this</span>;
 };</pre></div></div>
