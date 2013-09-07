@@ -4,6 +4,7 @@ function create() {
     return new this();
 }
 
+// Make `Heir` a prototypal child of `this`.
 function beget(Heir) {
     Heir.prototype = new this.Prototype(Heir);
     return Heir;
@@ -21,6 +22,8 @@ function makeConstructor(Target) {
     return Target;
 }
 
+// Create an object that behaves like an applyable function, but provides a
+// varargs-like interface for the supplied `values`.
 function FunctionLike() {}
 
 makeConstructor(FunctionLike);
@@ -36,9 +39,9 @@ FunctionLike.prototype.run = $.noop;
 // [Vector Clocks](http://en.wikipedia.org/wiki/Vector_clock) provide event
 // ordering without requiring time-based synchronization between multiple
 // threads of execution.
-//     Key := String
+//     Key := Integer String
 //     Count := Number, int >= 0
-/**/
+/* */
 
 // Create a new vector clock.
 //
@@ -82,6 +85,8 @@ VectorClock.prototype.next = function(key) {
     return next;
 };
 
+// Merge a clock into this clock, taking the maximum counts from each key
+// present in each clock.
 VectorClock.prototype.merge = function(clock) {
     var outgoing = new VectorClock();
     _.each([this, clock], function(incoming) {
@@ -92,12 +97,14 @@ VectorClock.prototype.merge = function(clock) {
     return outgoing;
 };
 
+// Marshall a clock instance from JSON.
 VectorClock.fromJSON = function(obj) {
     var vc = new VectorClock();
     _.extend(vc.keys, obj);
     return vc;
 };
 
+// Create a new repeater with an optional repeater (or repeater-like) source.
 function Repeater(source/*?*/) {
     this.id = this.idSequence.next();
     this.onEmit = $.Callbacks('memory');
@@ -110,8 +117,10 @@ function Repeater(source/*?*/) {
 
 makeConstructor(Repeater);
 
+// Start with an empty clock for all repeaters.
 Repeater.prototype.clock = new VectorClock();
 
+// Produce a monotonically increasing series of ids for all repeater types.
 Repeater.prototype.idSequence = {
     'current': 0,
 
@@ -122,6 +131,7 @@ Repeater.prototype.idSequence = {
     }
 };
 
+// End a repeater stream. Fire cancel callbacks to release resources.
 Repeater.prototype.cancel = function() {
     this.onEmit
         .disable()
@@ -132,10 +142,12 @@ Repeater.prototype.cancel = function() {
     return this;
 };
 
+// Emit a varargs sequence of values. See `emitMany` for more information.
 Repeater.prototype.emit = function(/*value, ...*/) {
     return this.emitMany(arguments);
 };
 
+// Emit an arraylike of values. Internal clocks are updated.
 Repeater.prototype.emitMany = function(values) {
     this.clock = this.clock
         .next(this.id)
@@ -144,11 +156,14 @@ Repeater.prototype.emitMany = function(values) {
     return this;
 };
 
+// Merge the clock for incoming values and emit them.
 Repeater.prototype.onReceive = function(values, clock/*, source*/) {
     this.clock = this.clock.merge(clock);
     this.emitMany(values);
 };
 
+// Add a receiver-like as a source. This is a helpful convenience used in
+// chaining repeaters.
 Repeater.prototype.addSource = function(source) {
     this.onCancel.add(function() {
         source.onEmit.remove(this.onReceive);
@@ -157,11 +172,12 @@ Repeater.prototype.addSource = function(source) {
     return this;
 };
 
+// Return `true` iff `source` has `this` attached to its emitter callbacks.
 Repeater.prototype.hasSource = function(source) {
     return source.onEmit.has(this.onReceive);
 };
 
-// map
+// ### map
 
 function MapRepeater(source, mapFunc) {
     Repeater.call(this, source);
@@ -171,10 +187,14 @@ function MapRepeater(source, mapFunc) {
 Repeater.beget(MapRepeater);
 
 MapRepeater.prototype.onReceive = function(values, clock) {
+    // Values are applied varargs-style.
     var value = this.mapFunc.apply(this, values);
     Repeater.prototype.onReceive.call(this, [value], clock);
 };
 
+// Map values from a repeater through a function. `map` may be a function or
+// function-like object.
+//
 //     map := Repeater function(Value, ...) { } Value
 Repeater.prototype.map = function(map) {
     return new MapRepeater(this, map);
@@ -182,34 +202,39 @@ Repeater.prototype.map = function(map) {
 
 // lastN
 
-function LastN(source, n) {
+function LastNRepeater(source, n) {
     Repeater.call(this, source);
     this.n = n;
     this.values = [];
 }
 
-Repeater.beget(LastN);
+Repeater.beget(LastNRepeater);
 
-LastN.prototype.onReceive = function(values, clock) {
+LastNRepeater.prototype.onReceive = function(values, clock) {
+    this.values = this.values.slice(0, this.n - 1);
     this.values.unshift(values[0]);
-    if (this.values.length > this.n) {
-        this.values.length = this.n;
-    }
     Repeater.prototype.onReceive.call(this, this.values, clock);
 };
 
+// Emit the last `n` values as an array. This repeaters expects a single
+// argument (and not an array of values).
+//
+//     n := Integer > 1
 Repeater.prototype.lastN = function(n) {
-    return new LastN(this, n);
+    return new LastNRepeater(this, n);
 };
 
 // repeatSame
 
+// `repeatSame` has no state, so a single instance is safe.
 var repeatSame = new FunctionLike();
 
 repeatSame.run = function(current, previous) {
     return _.isEqual(previous, current) ? previous : current;
 };
 
+// Considering the last two received values, emit the previous one if the two
+// compare equal.
 Repeater.prototype.repeatSame = function() {
     return this
         .lastN(2)
@@ -280,17 +305,20 @@ LastPromiseRepeater.prototype.onResolve = function(promise, context, args) {
     deferred.resolveWith(context, args);
 };
 
+// Expect to receive promises. Emit a promise that resolves with the most
+// recently received promise. Emit new promises on receive after the previously
+// emitted promise resolves.
 Repeater.prototype.lastPromise = function() {
     return new LastPromiseRepeater(this);
 };
 
-function UnPromise(source) {
+function UnPromiseRepeater(source) {
     Repeater.call(this, source);
 }
 
-Repeater.beget(UnPromise);
+Repeater.beget(UnPromiseRepeater);
 
-UnPromise.prototype.onReceive = function(values, clock) {
+UnPromiseRepeater.prototype.onReceive = function(values, clock) {
     values[0].then(_.bind(function() {
         Repeater.prototype.onReceive.call(this, arguments, clock);
     }, this));
@@ -300,14 +328,14 @@ UnPromise.prototype.onReceive = function(values, clock) {
 // impose order, call this function on a repeater chain with `chainPromise` or
 // `lastPromise`.
 Repeater.prototype.unpromise = function() {
-    return new UnPromise(this);
+    return new UnPromiseRepeater(this);
 };
 
-function AbortPreviousXHR() {}
+function AbortPreviousXHRMap() {}
 
-AbortPreviousXHR.prototype.current = null;
+AbortPreviousXHRMap.prototype.current = null;
 
-AbortPreviousXHR.prototype.apply = function(context, values) {
+AbortPreviousXHRMap.prototype.apply = function(context, values) {
     var previous = this.current;
     var promise = this.current = values[0];
     if (!_.isNull(previous) && _.isFunction(previous.abort)) {
@@ -318,11 +346,10 @@ AbortPreviousXHR.prototype.apply = function(context, values) {
     return promise;
 };
 
-// When receiving a new promise, attempt to abort the previous promise in
-// progress. This map is useful when promises represent idempotent actions, such
-// as an HTTP GET.
+// When receiving a new XHR, attempt to abort the previous XHR in progress. This
+// map is useful when XHRs are idempotent actions, such as an HTTP GET.
 Repeater.prototype.abortPreviousXHR = function() {
-    return this.map(new AbortPreviousXHR());
+    return this.map(new AbortPreviousXHRMap());
 };
 
 // ### class methods
@@ -408,8 +435,8 @@ JoinRepeater.prototype.onReceive = function(values, clock, source) {
 };
 
 // Join the values of several repeaters together. Only when all values are
-// present and their clocks represent consistent, orthogonal state will it emit
-// an array of values. This function accepts varargs or nested arrays of
+// present and their clocks represent consistent or orthogonal state will it
+// emit an array of values. This function accepts varargs or nested arrays of
 // repeaters.
 Repeater.join = function(/*repeater, ..., arguments*/) {
     return new JoinRepeater(_.flatten(arguments));
@@ -420,7 +447,7 @@ Repeater.join = function(/*repeater, ..., arguments*/) {
 // Sometimes it is helpful to have named indirection between `Repeater`s. Using
 // a proxy, the order of creation of repeaters doesn't matter because named
 // placeholders are used.
-
+/* */
 
 // Create a new `RepeaterProxy`.
 //
@@ -453,7 +480,8 @@ RepeaterProxy.prototype.get = function(name) {
     return repeater;
 };
 
-RepeaterProxy.prototype.getMany = function(/*name, ...*/) {
+// Resolve a varargs or arraylike list of names to repeaters.
+RepeaterProxy.prototype.getMany = function(/*name, ... || [name, ...]*/) {
     return _
         .chain(arguments)
         .flatten(/*shallow:*/true)
@@ -461,11 +489,15 @@ RepeaterProxy.prototype.getMany = function(/*name, ...*/) {
         .value();
 };
 
+// Set the source for a named repeater. Although multiple sources can be added,
+// this is not expected to be useful.
 RepeaterProxy.prototype.set = function(name, repeater) {
     this.get(name).addSource(repeater);
     return this;
 };
 
+// Set many repeaters in arbitrary order from a object mapping names to
+// repeaters.
 RepeaterProxy.prototype.setMany = function(repeaters) {
     _.each(repeaters, function(repeater, name) {
         this.set(name, repeater);
@@ -482,39 +514,63 @@ this.repeater = (function(global, repeater, oldRepeater) {
     repeater.VectorClock   = VectorClock;
     repeater.Repeater      = Repeater;
     repeater.RepeaterProxy = RepeaterProxy;
-    repeater.noConflict    = _.once(function() {
+    repeater.noConflict    = function() {
         global.repeater = oldRepeater;
         return repeater;
-    });
+    };
 
     return repeater;
 })(this, {}, this.repeater);
 
 // ## jQuery extension
+var $window = $(window),
+    $document = $(document);
 
-$.fn.toRepeater = function() {
-    // TODO class-ify
-    var $elements = this;
-    var args = _.toArray(arguments);
-    var repeater = Repeater.create();
-    args.push(function() {
-        repeater.emitMany(arguments);
-    });
+function JQueryRepeater($elements, onArgs) {
+    Repeater.call(this);
+    this.$elements = $elements;
+    var args = _.toArray(onArgs);
+    args.push(_.bind(function() {
+        this.emitArray(arguments);
+    }, this));
     $elements.on.apply($elements, args);
-    repeater.onCancel.add(function() {
+    this.onCancel.add(function() {
         $elements.off.apply($elements, args);
     });
-    return repeater;
+}
+
+Repeater.beget(JQueryRepeater);
+
+// Convert an event handler to a repeater. Arguments to `$.fn.on` are
+// expected, but without the callback.
+$.fn.toRepeater = function() {
+    return new JQueryRepeater(this, arguments);
 };
+
+var resizeRepeater = _.once(function() {
+    return $window.toRepeater('resize');
+});
 
 $.repeater = {};
 
-$.repeater.windowSize = function() {
-    var $window = $(window);
+// Emit window size as a repeater. Size is measured immediately and then on all
+// `resize` events.
+$.repeater.windowSize = _.once(function() {
     var measure = function() {
         return {'width': $window.width(), 'height': $window.height()};
     };
-    var repeater = $window.toRepeater('resize').map(measure);
-    repeater.emit(measure());
-    return repeater;
-};
+    return resizeRepeater()
+        .map(measure)
+        .emit(measure());
+});
+
+// Emit document size as a repeater. Size is measured immediately and then on
+// all `resize` events.
+$.repeater.documentSize = _.once(function() {
+    var measure = function() {
+        return {'width': $document.width(), 'height': $document.height()};
+    };
+    return resizeRepeater()
+        .map(measure)
+        .emit(measure());
+});

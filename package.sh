@@ -1,9 +1,9 @@
 #!/bin/bash
 cat <<EOF
-(function() {
+(function(_, $) {
 'use strict';
 
 $(cat)
 
-}).call(this);
+}).call(this, _, jQuery);
 EOF
